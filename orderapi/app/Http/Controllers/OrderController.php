@@ -1,0 +1,161 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Activity;
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
+
+class OrderController extends Controller
+{
+    private $rules = [
+        'legalization_date' => 'required|date|date_format:Y-m-d',
+        'address' => 'required|string|max:50|min:3',
+        'city' => 'required|string|max:50|min:3',
+        'causal_id' => 'required|numeric',
+        'observation_id' => 'numeric',
+    ];
+
+    private $traductionAttributes = [
+        'legalization_date' => 'fecha de legalización',
+        'address' => 'dirección',
+        'city' => 'ciudad',
+        'causal_id' => 'causal',
+        'observation_id' => 'observación'
+    ];
+
+
+    
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $orders = Order::all();  
+        $orders->load(['causal', 'observation']);
+        return response()->json($orders, Response::HTTP_OK);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+
+
+        $order = Order::create($request->all());
+        $response = [
+            'message' => 'Registro creado exitosamente',
+            'order'  => $order
+        ];
+
+        return response()->json($response, Response::HTTP_CREATED);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Order $order)
+    {
+        $order->load(['causal', 'observation']);
+        return response()->json($order, Response::HTTP_OK);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Order $order)
+    {
+
+
+        $order->update($request->all());
+        $response = [
+            'message' => 'Registro modificado exitosamente',
+            'order'  => $order
+        ];
+
+        return response()->json($response, Response::HTTP_OK);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Order $order)
+    {
+        $order->delete();
+        $data = [
+            'message' => 'Registro eliminado exitosamente',
+            'order'  => $order->id
+        ];
+
+        return response()->json($data, Response::HTTP_OK);
+    }
+
+    /**
+     * Agrega una nueva actividad a una orden
+     */
+    public function add_activity(string $order_id, string $activity_id) 
+    {
+        $order = Order::find($order_id);
+        if(!$order)
+        {
+            $data = [                
+                'errors' =>'No se encuentra la orden',
+                'data' => [$order_id, $activity_id]
+            ];
+            return response()->json($data, Response::HTTP_BAD_REQUEST);
+        }
+
+        $activity = Activity::find($activity_id);
+        if(!$activity)
+        {
+            $data = [                
+                'errors' =>'No se encuentra la actividad',
+                'data' => [$order_id, $activity_id]
+            ];            
+            return response()->json($data, Response::HTTP_BAD_REQUEST);
+        }
+
+        $order->activities()->attach($activity->id);
+        $data = [
+            'message' => 'Actividad agregada exitosamente',
+            'order_activity'  => $order->activities
+        ];
+        return response()->json($data, Response::HTTP_OK);
+    }
+
+    /**
+     * Elimina una actividad a una orden
+     */
+    public function remove_activity(string $order_id, string $activity_id) 
+    {
+        $order = Order::find($order_id);
+        if(!$order)
+        {
+            $data = [                
+                'errors' =>'No se encuentra la orden',
+                'data' => [$order_id, $activity_id]
+            ];
+            return response()->json($data, Response::HTTP_BAD_REQUEST);
+        }
+
+        $activity = Activity::find($activity_id);
+        if(!$activity)
+        {
+            $data = [                
+                'errors' =>'No se encuentra la actividad',
+                'data' => [$order_id, $activity_id]
+            ];            
+            return response()->json($data, Response::HTTP_BAD_REQUEST);
+        }
+
+        $order->activities()->detach($activity->id);
+        $data = [
+            'message' => 'Actividad eliminada exitosamente',
+            'order_activity'  => $order->activities
+        ];
+        return response()->json($data, Response::HTTP_OK);
+    }
+}
